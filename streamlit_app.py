@@ -16,7 +16,8 @@ from xgboost import XGBClassifier
 st.title("Анализ дефицита тестостерона")
 
 # Загрузка данных напрямую из файла в репозитории
-file_path = 'ptestost.xlsx'  # Укажите путь к вашему файлу, если он не в корневой директории
+file_path = 'ptestost.xlsx' 
+# Укажите путь к вашему файлу, если он не в корневой директории
 try:
     df = pd.read_excel(file_path)
     df = df.rename(columns={
