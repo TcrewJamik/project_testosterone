@@ -52,7 +52,7 @@ with st.expander("Визуализация данных"):
     st.subheader("Гистограммы распределения признаков")
     fig, axes = plt.subplots(2, 3, figsize=(15, 10))
     for i, column in enumerate(df.columns):
-        if i < 6:  # для демонстрации выводим первые 6 столбцов
+        if i < 6:  # Выводим первые 6 столбцов для примера
             sns.histplot(df[column], bins=30, kde=True, ax=axes[i//3, i%3])
             axes[i//3, i%3].set_title(f'Распределение {column}')
     st.pyplot(fig)
@@ -83,7 +83,7 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 feature_names = X.columns.tolist()
 
-# Боковая панель: выбор модели, гиперпараметров, признаков и единичное предсказание
+# Боковая панель: объединённый раздел выбора признаков для обучения и настройки единичного предсказания
 with st.sidebar:
     st.header("🛠️ Настройки модели")
     model_choice = st.selectbox("Выберите модель:", 
@@ -120,14 +120,16 @@ with st.sidebar:
         hyperparams['min_samples_leaf'] = st.slider("min_samples_leaf", 1, 10, 1, step=1)
     
     st.markdown("---")
-    st.header("📊 Выбор признаков")
+    st.header("📊 Выбор признаков и единичное предсказание")
     available_features = feature_names
-    default_features = available_features  # по умолчанию выбираем все признаки
-    selected_features = st.multiselect("Выберите признаки для обучения:", available_features, default=default_features)
+    default_features = available_features  # по умолчанию выбираются все признаки
+    selected_features = st.multiselect("Выберите признаки для обучения и единичного предсказания:", 
+                                       available_features, default=default_features)
+    # Кнопка для обучения модели
     train_button = st.button("🔥 Обучить модель")
     
     st.markdown("---")
-    st.header("🔮 Единичное предсказание")
+    st.subheader("Настройка входных значений для единичного предсказания")
     prediction_data = {}
     if selected_features:
         for feature in selected_features:
@@ -142,12 +144,12 @@ if train_button:
     if not selected_features:
         st.warning("Выберите хотя бы один признак для обучения.")
     else:
-        # Отбираем столбцы по выбранным признакам
+        # Отбор столбцов по выбранным признакам
         selected_idx = [feature_names.index(feat) for feat in selected_features]
         X_train_sel = X_train_scaled[:, selected_idx]
         X_test_sel = X_test_scaled[:, selected_idx]
         
-        # Создаём классификатор на основе выбранной модели
+        # Создание классификатора на основе выбранной модели
         if model_choice == "Логистическая регрессия":
             clf = LogisticRegression(random_state=42, max_iter=1000, **hyperparams)
         elif model_choice == "CatBoost":
@@ -211,7 +213,6 @@ if single_predict_button:
         st.warning("Сначала обучите модель!")
     else:
         sample_df = pd.DataFrame([prediction_data])
-        # Отбираем только выбранные признаки и масштабируем
         sample_sel = sample_df[st.session_state['selected_features']]
         sample_scaled = scaler.transform(sample_sel)
         pred_class = st.session_state['clf'].predict(sample_scaled)
