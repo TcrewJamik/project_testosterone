@@ -7,3 +7,4 @@ matplotlib
 seaborn
 streamlit
 openpyxl
+requests  # requests нужно указать, так как это внешняя библиотека
