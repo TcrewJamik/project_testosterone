@@ -3,29 +3,29 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             f1_score, roc_auc_score, roc_curve, confusion_matrix)
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.metrics import (accuracy_score, roc_auc_score, f1_score, precision_score, 
+                             recall_score, roc_curve, auc, confusion_matrix, classification_report)
 from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
-import requests
-import io  # Импорт для работы с байтовыми потоками
+import requests, io
 
-# Заголовок приложения
+st.set_page_config(page_title="Анализ дефицита тестостерона", page_icon="⚙️", layout="wide")
 st.title("Анализ дефицита тестостерона")
 
-# Загрузка данных напрямую из raw ссылки GitHub
-raw_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/refs/heads/master/ptestost.xlsx"  # Замените на вашу raw ссылку
-
+# Загрузка данных из GitHub
+raw_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/refs/heads/master/ptestost.xlsx"
 try:
     response = requests.get(raw_url)
-    response.raise_for_status()  # Проверка на ошибки HTTP
-    excel_file = io.BytesIO(response.content)  # Чтение контента в BytesIO
-    df = pd.read_excel(excel_file)  # Чтение из BytesIO объекта как из файла
-
+    response.raise_for_status()
+    excel_file = io.BytesIO(response.content)
+    df = pd.read_excel(excel_file)
+    # Переименование столбцов
     df = df.rename(columns={
         'Age': 'Возраст',
         'DM': 'Наличие Диабета',
@@ -35,151 +35,190 @@ try:
         'AC': 'Окружность_талии',
         'T': 'Дефицит Тестостерона'
     })
-    st.write("Данные успешно загружены из raw ссылки GitHub!")
-except FileNotFoundError:
-    st.error("Файл ptestost.xlsx не найден локально.")
-    st.stop()
-except requests.exceptions.RequestException as e:
-    st.error(f"Ошибка при загрузке данных из URL: {e}")
-    st.stop()
+    st.success("Данные успешно загружены из raw ссылки GitHub!")
 except Exception as e:
-    st.error(f"Произошла ошибка при чтении Excel файла из URL: {e}")
+    st.error(f"Ошибка загрузки данных: {e}")
     st.stop()
 
-# Информация о данных
-st.subheader("Информация о данных")
-buffer = io.StringIO()
-df.info(buf=buffer)
-st.text(buffer.getvalue())
-st.write("Описательная статистика:")
-st.write(df.describe())
-st.write("Пропущенные значения:")
-st.write(df.isna().sum())
+# Исследование данных
+with st.expander("Информация о данных"):
+    st.dataframe(df.head())
+    st.write("Описательная статистика:")
+    st.dataframe(df.describe())
+    st.write("Пропущенные значения:")
+    st.write(df.isna().sum())
 
-# Визуализация данных
-st.subheader("Визуализация данных")
-st.write("Гистограммы распределения признаков:")
-fig, axes = plt.subplots(3, 3, figsize=(15, 10))
-for i, column in enumerate(df.columns):
-    sns.histplot(df[column], bins=30, kde=True, ax=axes[i // 3, i % 3])
-    axes[i // 3, i % 3].set_title(f'Распределение {column}')
-plt.tight_layout()
-st.pyplot(fig)
-
-st.write("Box Plot:")
-fig = plt.figure(figsize=(15, 10))
-sns.boxplot(data=df)
-plt.title("Box Plot")
-st.pyplot(fig)
-
-st.write("Столбчатые диаграммы:")
-for col in df.columns:
-    fig = plt.figure(figsize=(8, 6))
-    df[col].value_counts().plot(kind='bar')
-    plt.title(f"Bar Plot для {col}")
-    plt.ylabel("Частота")
-    plt.xticks(rotation=45)
+with st.expander("Визуализация данных"):
+    st.subheader("Гистограммы распределения признаков")
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    for i, column in enumerate(df.columns):
+        if i < 6:  # для демонстрации выводим первые 6 столбцов
+            sns.histplot(df[column], bins=30, kde=True, ax=axes[i//3, i%3])
+            axes[i//3, i%3].set_title(f'Распределение {column}')
     st.pyplot(fig)
-
-# Корреляция
-st.subheader("Корреляционный анализ")
-correlation_matrix = df.corr()
-st.write("Матрица корреляций:")
-st.write(correlation_matrix)
-fig = plt.figure(figsize=(10, 8))
-sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
-plt.title("Тепловая карта корреляций")
-st.pyplot(fig)
+    
+    st.subheader("Корреляционный анализ")
+    fig_corr = plt.figure(figsize=(10, 8))
+    sns.heatmap(df.corr(), annot=True, cmap='coolwarm', fmt=".2f")
+    st.pyplot(fig_corr)
 
 # Подготовка данных
 target = df['Дефицит Тестостерона']
 X = df.drop(columns=['Дефицит Тестостерона'])
 y = target
+
+# Если встречаются категориальные признаки, их кодируем
+non_numeric = X.select_dtypes(include=['object']).columns
+if len(non_numeric) > 0:
+    le = LabelEncoder()
+    for col in non_numeric:
+        X[col] = le.fit_transform(X[col])
+
+# Разбиение на обучающую и тестовую выборки
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+# Масштабирование признаков
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
-feature_names = X.columns
+feature_names = X.columns.tolist()
 
-# Функция для оценки модели
-def evaluate_model(model, X_train, X_test, y_train, y_test, model_name, feature_names):
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)[:, 1]
+# Боковая панель: выбор модели, гиперпараметров, признаков и единичное предсказание
+with st.sidebar:
+    st.header("🛠️ Настройки модели")
+    model_choice = st.selectbox("Выберите модель:", 
+                                ["Логистическая регрессия", "CatBoost", "XGBoost", "Decision Tree", "Random Forest"])
+    hyperparams = {}
+    if model_choice == "Логистическая регрессия":
+        hyperparams['C'] = st.slider("C (Регуляризация)", 0.001, 10.0, 1.0, step=0.01)
+        penalty_options = ['l1', 'l2', 'none']
+        hyperparams['penalty'] = st.selectbox("Penalty", penalty_options, index=1)
+        solver_options = ['lbfgs', 'liblinear']
+        if hyperparams['penalty'] == 'l1':
+            solver_options = ['liblinear', 'saga']
+        elif hyperparams['penalty'] == 'none':
+            solver_options = ['lbfgs', 'newton-cg', 'sag', 'saga']
+        hyperparams['solver'] = st.selectbox("Solver", solver_options, index=0)
+    elif model_choice == "CatBoost":
+        hyperparams['depth'] = st.slider("Глубина (depth)", 4, 10, 6, step=1)
+        hyperparams['iterations'] = st.slider("Iterations", 50, 300, 200, step=10)
+        hyperparams['learning_rate'] = st.slider("Learning rate", 0.01, 0.5, 0.1, step=0.01)
+    elif model_choice == "XGBoost":
+        hyperparams['max_depth'] = st.slider("max_depth", 3, 10, 6, step=1)
+        hyperparams['n_estimators'] = st.slider("n_estimators", 50, 300, 200, step=10)
+        hyperparams['learning_rate'] = st.slider("learning_rate", 0.01, 0.5, 0.1, step=0.01)
+        hyperparams['scale_pos_weight'] = st.slider("scale_pos_weight", 1, 10, 1, step=1)
+    elif model_choice == "Decision Tree":
+        hyperparams['criterion'] = st.selectbox("Criterion", ['gini', 'entropy'], index=0)
+        hyperparams['max_depth'] = st.slider("max_depth", 1, 20, 5, step=1)
+        hyperparams['min_samples_split'] = st.slider("min_samples_split", 2, 20, 2, step=1)
+        hyperparams['min_samples_leaf'] = st.slider("min_samples_leaf", 1, 10, 1, step=1)
+    elif model_choice == "Random Forest":
+        hyperparams['n_estimators'] = st.slider("n_estimators", 50, 300, 200, step=10)
+        hyperparams['max_depth'] = st.slider("max_depth", 1, 20, 10, step=1)
+        hyperparams['min_samples_split'] = st.slider("min_samples_split", 2, 20, 2, step=1)
+        hyperparams['min_samples_leaf'] = st.slider("min_samples_leaf", 1, 10, 1, step=1)
+    
+    st.markdown("---")
+    st.header("📊 Выбор признаков")
+    available_features = feature_names
+    default_features = available_features  # по умолчанию выбираем все признаки
+    selected_features = st.multiselect("Выберите признаки для обучения:", available_features, default=default_features)
+    train_button = st.button("🔥 Обучить модель")
+    
+    st.markdown("---")
+    st.header("🔮 Единичное предсказание")
+    prediction_data = {}
+    if selected_features:
+        for feature in selected_features:
+            min_val = float(X_train[feature].min())
+            max_val = float(X_train[feature].max())
+            default_val = float(X_train[feature].mean())
+            prediction_data[feature] = st.slider(f"Значение для {feature}:", min_val, max_val, default_val)
+    single_predict_button = st.button("✨ Предсказать для единичного образца")
 
-    # Метрики
-    st.write(f"\n{model_name} - Метрики с порогом 0.5:")
-    st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
-    st.write(f"Precision: {precision_score(y_test, y_pred):.4f}")
-    st.write(f"Recall: {recall_score(y_test, y_pred):.4f}")
-    st.write(f"F1-Score: {f1_score(y_test, y_pred):.4f}")
-    st.write(f"ROC-AUC: {roc_auc_score(y_test, y_pred_proba):.4f}")
-
-    # ROC-кривая
-    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
-    roc_auc = roc_auc_score(y_test, y_pred_proba)
-    fig = plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC-кривая (AUC = {roc_auc:.2f})')
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title(f'ROC-кривая - {model_name}')
-    plt.legend(loc="lower right")
-    st.pyplot(fig)
-
-    # Матрица ошибок
-    conf_matrix = confusion_matrix(y_test, y_pred)
-    fig = plt.figure(figsize=(8, 6))
-    sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues',
-                xticklabels=['Predicted 0', 'Predicted 1'],
-                yticklabels=['Actual 0', 'Actual 1'])
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-    plt.title(f'Матрица ошибок - {model_name}')
-    st.pyplot(fig)
-
-    # Важность признаков
-    if model_name == "Логистическая регрессия":
-        importance = np.abs(model.coef_[0])
+# Обучение модели и оценка
+if train_button:
+    if not selected_features:
+        st.warning("Выберите хотя бы один признак для обучения.")
     else:
-        importance = model.feature_importances_
-    feature_importance = pd.DataFrame({
-        'Feature': feature_names,
-        'Importance': importance
-    }).sort_values(by='Importance', ascending=False)
-    st.write(f"\n{model_name} - Важность признаков:")
-    st.write(feature_importance)
-    fig = plt.figure(figsize=(10, 6))
-    sns.barplot(x='Importance', y='Feature', data=feature_importance, palette='viridis', legend=False)
-    plt.title(f'Важность признаков - {model_name}')
-    plt.xlabel('Важность')
-    plt.ylabel('Признак')
-    st.pyplot(fig)
+        # Отбираем столбцы по выбранным признакам
+        selected_idx = [feature_names.index(feat) for feat in selected_features]
+        X_train_sel = X_train_scaled[:, selected_idx]
+        X_test_sel = X_test_scaled[:, selected_idx]
+        
+        # Создаём классификатор на основе выбранной модели
+        if model_choice == "Логистическая регрессия":
+            clf = LogisticRegression(random_state=42, max_iter=1000, **hyperparams)
+        elif model_choice == "CatBoost":
+            clf = CatBoostClassifier(random_state=42, verbose=0, **hyperparams)
+        elif model_choice == "XGBoost":
+            clf = XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss', **hyperparams)
+        elif model_choice == "Decision Tree":
+            clf = DecisionTreeClassifier(random_state=42, **hyperparams)
+        elif model_choice == "Random Forest":
+            clf = RandomForestClassifier(random_state=42, **hyperparams)
+        else:
+            clf = LogisticRegression(random_state=42, max_iter=1000)
+        
+        clf.fit(X_train_sel, y_train)
+        y_pred = clf.predict(X_test_sel)
+        y_prob = clf.predict_proba(X_test_sel)[:, 1]
+        
+        st.session_state['clf'] = clf
+        st.session_state['selected_features'] = selected_features
+        st.session_state['X_test_sel'] = X_test_sel
+        st.session_state['y_test'] = y_test
+        st.session_state['y_pred'] = y_pred
+        st.session_state['y_prob'] = y_prob
+        
+        st.subheader("🏆 Результаты модели")
+        st.write(f"Модель: **{model_choice}**")
+        st.write("Гиперпараметры:", hyperparams)
+        st.metric("Точность (Accuracy)", f"{accuracy_score(y_test, y_pred):.3f}")
+        st.metric("ROC AUC", f"{roc_auc_score(y_test, y_prob):.3f}")
+        st.metric("F1-мера", f"{f1_score(y_test, y_pred):.3f}")
+        st.metric("Precision", f"{precision_score(y_test, y_pred):.3f}")
+        st.metric("Recall", f"{recall_score(y_test, y_pred):.3f}")
+        
+        # Матрица ошибок
+        cm = confusion_matrix(y_test, y_pred)
+        fig_cm, ax_cm = plt.subplots(figsize=(6, 4))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='viridis', ax=ax_cm)
+        ax_cm.set_xlabel("Предсказанные классы")
+        ax_cm.set_ylabel("Истинные классы")
+        ax_cm.set_title("Матрица ошибок")
+        st.pyplot(fig_cm)
+        
+        # ROC-кривая (Plotly)
+        fpr, tpr, _ = roc_curve(y_test, y_prob)
+        roc_auc_val = auc(fpr, tpr)
+        fig_roc = px.area(
+            x=fpr, y=tpr,
+            title=f'ROC-кривая (AUC = {roc_auc_val:.2f})',
+            labels={'x': 'False Positive Rate', 'y': 'True Positive Rate'},
+        )
+        fig_roc.add_shape(type='line', line=dict(dash='dash'), x0=0, x1=1, y0=0, y1=1)
+        fig_roc.update_traces(fillcolor='rgba(99, 255, 132, 0.6)')
+        st.plotly_chart(fig_roc)
+        
+        st.subheader("Отчет о классификации")
+        st.text(classification_report(y_test, y_pred))
 
-# Обучение и оценка моделей
-st.subheader("Обучение и оценка моделей")
+# Единичное предсказание
+if single_predict_button:
+    if 'clf' not in st.session_state:
+        st.warning("Сначала обучите модель!")
+    else:
+        sample_df = pd.DataFrame([prediction_data])
+        # Отбираем только выбранные признаки и масштабируем
+        sample_sel = sample_df[st.session_state['selected_features']]
+        sample_scaled = scaler.transform(sample_sel)
+        pred_class = st.session_state['clf'].predict(sample_scaled)
+        pred_prob = st.session_state['clf'].predict_proba(sample_scaled)[:, 1]
+        st.subheader("✨ Результат единичного предсказания")
+        st.write(f"Предсказанный класс: **{pred_class[0]}**")
+        st.write(f"Вероятность класса 1: **{pred_prob[0]:.3f}**")
 
-# Логистическая регрессия с выбранными гиперпараметрами
-lr_model = LogisticRegression(random_state=42, max_iter=1000, C=1, class_weight='balanced')
-st.write("Логистическая регрессия - Используем гиперпараметры: C=1, class_weight='balanced'")
-evaluate_model(lr_model, X_train_scaled, X_test_scaled, y_train, y_test, "Логистическая регрессия", feature_names)
-
-# CatBoost с выбранными гиперпараметрами
-cb_model = CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced',
-                              depth=6, iterations=200, learning_rate=0.1)
-st.write("CatBoost - Используем гиперпараметры: depth=6, iterations=200, learning_rate=0.1")
-evaluate_model(cb_model, X_train_scaled, X_test_scaled, y_train, y_test, "CatBoost", feature_names)
-
-# XGBoost с выбранными гиперпараметрами
-xgb_model = XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss',
-                          max_depth=6, n_estimators=200, learning_rate=0.1, scale_pos_weight=1)
-st.write("XGBoost - Используем гиперпараметры: max_depth=6, n_estimators=200, learning_rate=0.1, scale_pos_weight=1")
-evaluate_model(xgb_model, X_train_scaled, X_test_scaled, y_train, y_test, "XGBoost", feature_names)
-
-# Random Forest с выбранными гиперпараметрами
-rf_model = RandomForestClassifier(random_state=42, n_estimators=200, max_depth=10,
-                                  min_samples_split=2, min_samples_leaf=1, class_weight='balanced')
-st.write("Random Forest - Используем гиперпараметры: n_estimators=200, max_depth=10, min_samples_split=2, min_samples_leaf=1, class_weight='balanced'")
-evaluate_model(rf_model, X_train_scaled, X_test_scaled, y_train, y_test, "Random Forest", feature_names)
+st.markdown("---")
+st.markdown("Разработано компанией Jamshed Corporation совместно с ZyplAI")
