@@ -18,7 +18,7 @@ import io  # Добавьте импорт io
 st.title("Анализ дефицита тестостерона")
 
 # Загрузка данных напрямую из raw ссылки GitHub
-raw_url = "https://raw.githubusercontent.com/{ваш_логин_github}/{название_репозитория}/main/ptestost.xlsx" # Замените на вашу raw ссылку
+raw_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/refs/heads/master/ptestost.xlsx" # Замените на вашу raw ссылку
 
 try:
     response = requests.get(raw_url)
