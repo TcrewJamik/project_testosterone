@@ -263,4 +263,3 @@ if single_predict_button:
 st.markdown("---")
 st.markdown("Разработано компанией Jamshed Corporation совместно с ZyplAI")
 
-добавь важность признаков
