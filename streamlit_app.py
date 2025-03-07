@@ -5,23 +5,27 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
-                             f1_score, roc_auc_score, roc_curve, confusion_matrix)
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                            f1_score, roc_auc_score, roc_curve, confusion_matrix)
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
-import io
-import warnings
-warnings.filterwarnings('ignore')
+import requests
+import io  # Добавьте импорт io
 
 # Заголовок приложения
 st.title("Анализ дефицита тестостерона")
 
-# Загрузка данных
-file_path = 'ptestost.xlsx'
+# Загрузка данных напрямую из raw ссылки GitHub
+raw_url = "https://raw.githubusercontent.com/{ваш_логин_github}/{название_репозитория}/main/ptestost.xlsx" # Замените на вашу raw ссылку
+
 try:
-    df = pd.read_excel(file_path)
+    response = requests.get(raw_url)
+    response.raise_for_status()  # Проверка на ошибки HTTP
+    excel_file = io.BytesIO(response.content) # Чтение контента в BytesIO
+    df = pd.read_excel(excel_file) # Чтение из BytesIO объекта как из файла
+
     df = df.rename(columns={
         'Age': 'Возраст',
         'DM': 'Наличие Диабета',
@@ -31,10 +35,17 @@ try:
         'AC': 'Окружность_талии',
         'T': 'Дефицит Тестостерона'
     })
-    st.write("Данные успешно загружены из файла ptestost.xlsx!")
+    st.write("Данные успешно загружены из raw ссылки GitHub!") # Изменено сообщение
 except FileNotFoundError:
-    st.error(f"Файл {file_path} не найден. Убедитесь, что файл ptestost.xlsx находится в корневой директории вашего репозитория.")
+    st.error(f"Файл ptestost.xlsx не найден локально.") # Изменено сообщение
     st.stop()
+except requests.exceptions.RequestException as e:
+    st.error(f"Ошибка при загрузке данных из URL: {e}") # Обработка ошибок requests
+    st.stop()
+except Exception as e:
+    st.error(f"Произошла ошибка при чтении Excel файла из URL: {e}") # Общая обработка ошибок
+    st.stop()
+
 
 # Информация о данных
 st.subheader("Информация о данных")
