@@ -3,28 +3,28 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                            f1_score, roc_auc_score, roc_curve, confusion_matrix)
+                             f1_score, roc_auc_score, roc_curve, confusion_matrix)
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
 import requests
-import io  # Добавьте импорт io
+import io  # Импорт для работы с байтовыми потоками
 
 # Заголовок приложения
 st.title("Анализ дефицита тестостерона")
 
 # Загрузка данных напрямую из raw ссылки GitHub
-raw_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/refs/heads/master/ptestost.xlsx" # Замените на вашу raw ссылку
+raw_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/refs/heads/master/ptestost.xlsx"  # Замените на вашу raw ссылку
 
 try:
     response = requests.get(raw_url)
     response.raise_for_status()  # Проверка на ошибки HTTP
-    excel_file = io.BytesIO(response.content) # Чтение контента в BytesIO
-    df = pd.read_excel(excel_file) # Чтение из BytesIO объекта как из файла
+    excel_file = io.BytesIO(response.content)  # Чтение контента в BytesIO
+    df = pd.read_excel(excel_file)  # Чтение из BytesIO объекта как из файла
 
     df = df.rename(columns={
         'Age': 'Возраст',
@@ -35,23 +35,22 @@ try:
         'AC': 'Окружность_талии',
         'T': 'Дефицит Тестостерона'
     })
-    st.write("Данные успешно загружены из raw ссылки GitHub!") # Изменено сообщение
+    st.write("Данные успешно загружены из raw ссылки GitHub!")
 except FileNotFoundError:
-    st.error(f"Файл ptestost.xlsx не найден локально.") # Изменено сообщение
+    st.error("Файл ptestost.xlsx не найден локально.")
     st.stop()
 except requests.exceptions.RequestException as e:
-    st.error(f"Ошибка при загрузке данных из URL: {e}") # Обработка ошибок requests
+    st.error(f"Ошибка при загрузке данных из URL: {e}")
     st.stop()
 except Exception as e:
-    st.error(f"Произошла ошибка при чтении Excel файла из URL: {e}") # Общая обработка ошибок
+    st.error(f"Произошла ошибка при чтении Excel файла из URL: {e}")
     st.stop()
-
 
 # Информация о данных
 st.subheader("Информация о данных")
 buffer = io.StringIO()
 df.info(buf=buffer)
-st.text(buffer.getvalue())  # Используем st.text для вывода текстовой информации
+st.text(buffer.getvalue())
 st.write("Описательная статистика:")
 st.write(df.describe())
 st.write("Пропущенные значения:")
@@ -153,7 +152,7 @@ def evaluate_model(model, X_train, X_test, y_train, y_test, model_name, feature_
     st.write(f"\n{model_name} - Важность признаков:")
     st.write(feature_importance)
     fig = plt.figure(figsize=(10, 6))
-    sns.barplot(x='Importance', y='Feature', hue='Feature', data=feature_importance, palette='viridis', legend=False)
+    sns.barplot(x='Importance', y='Feature', data=feature_importance, palette='viridis', legend=False)
     plt.title(f'Важность признаков - {model_name}')
     plt.xlabel('Важность')
     plt.ylabel('Признак')
@@ -162,38 +161,25 @@ def evaluate_model(model, X_train, X_test, y_train, y_test, model_name, feature_
 # Обучение и оценка моделей
 st.subheader("Обучение и оценка моделей")
 
-# Логистическая регрессия
-if st.button("Обучить Логистическую регрессию"):
-    lr_param_grid = {'C': [0.01, 0.1, 1, 10], 'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']}
-    lr_grid = GridSearchCV(LogisticRegression(random_state=42, max_iter=1000), lr_param_grid, cv=5, scoring='f1', n_jobs=-1)
-    lr_grid.fit(X_train_scaled, y_train)
-    best_lr = lr_grid.best_estimator_
-    st.write("Логистическая регрессия - Лучшие параметры:", lr_grid.best_params_)
-    evaluate_model(best_lr, X_train_scaled, X_test_scaled, y_train, y_test, "Логистическая регрессия", feature_names)
+# Логистическая регрессия с выбранными гиперпараметрами
+lr_model = LogisticRegression(random_state=42, max_iter=1000, C=1, class_weight='balanced')
+st.write("Логистическая регрессия - Используем гиперпараметры: C=1, class_weight='balanced'")
+evaluate_model(lr_model, X_train_scaled, X_test_scaled, y_train, y_test, "Логистическая регрессия", feature_names)
 
-# CatBoost
-if st.button("Обучить CatBoost"):
-    cb_param_grid = {'depth': [4, 6, 10], 'iterations': [100, 200], 'learning_rate': [0.01, 0.1]}
-    cb_grid = GridSearchCV(CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced'), cb_param_grid, cv=5, scoring='f1', n_jobs=-1)
-    cb_grid.fit(X_train_scaled, y_train)
-    best_cb = cb_grid.best_estimator_
-    st.write("CatBoost - Лучшие параметры:", cb_grid.best_params_)
-    evaluate_model(best_cb, X_train_scaled, X_test_scaled, y_train, y_test, "CatBoost", feature_names)
+# CatBoost с выбранными гиперпараметрами
+cb_model = CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced',
+                              depth=6, iterations=200, learning_rate=0.1)
+st.write("CatBoost - Используем гиперпараметры: depth=6, iterations=200, learning_rate=0.1")
+evaluate_model(cb_model, X_train_scaled, X_test_scaled, y_train, y_test, "CatBoost", feature_names)
 
-# XGBoost
-if st.button("Обучить XGBoost"):
-    xgb_param_grid = {'max_depth': [3, 6, 10], 'n_estimators': [100, 200], 'learning_rate': [0.01, 0.1], 'scale_pos_weight': [1, 5]}
-    xgb_grid = GridSearchCV(XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'), xgb_param_grid, cv=5, scoring='f1', n_jobs=-1)
-    xgb_grid.fit(X_train_scaled, y_train)
-    best_xgb = xgb_grid.best_estimator_
-    st.write("XGBoost - Лучшие параметры:", xgb_grid.best_params_)
-    evaluate_model(best_xgb, X_train_scaled, X_test_scaled, y_train, y_test, "XGBoost", feature_names)
+# XGBoost с выбранными гиперпараметрами
+xgb_model = XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss',
+                          max_depth=6, n_estimators=200, learning_rate=0.1, scale_pos_weight=1)
+st.write("XGBoost - Используем гиперпараметры: max_depth=6, n_estimators=200, learning_rate=0.1, scale_pos_weight=1")
+evaluate_model(xgb_model, X_train_scaled, X_test_scaled, y_train, y_test, "XGBoost", feature_names)
 
-# Random Forest
-if st.button("Обучить Random Forest"):
-    rf_param_grid = {'n_estimators': [100, 200], 'max_depth': [5, 10, 20, None], 'min_samples_split': [2, 5], 'min_samples_leaf': [1, 2], 'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']}
-    rf_grid = GridSearchCV(RandomForestClassifier(random_state=42), rf_param_grid, cv=5, scoring='f1', n_jobs=-1)
-    rf_grid.fit(X_train_scaled, y_train)
-    best_rf = rf_grid.best_estimator_
-    st.write("Random Forest - Лучшие параметры:", rf_grid.best_params_)
-    evaluate_model(best_rf, X_train_scaled, X_test_scaled, y_train, y_test, "Random Forest", feature_names)
+# Random Forest с выбранными гиперпараметрами
+rf_model = RandomForestClassifier(random_state=42, n_estimators=200, max_depth=10,
+                                  min_samples_split=2, min_samples_leaf=1, class_weight='balanced')
+st.write("Random Forest - Используем гиперпараметры: n_estimators=200, max_depth=10, min_samples_split=2, min_samples_leaf=1, class_weight='balanced'")
+evaluate_model(rf_model, X_train_scaled, X_test_scaled, y_train, y_test, "Random Forest", feature_names)
