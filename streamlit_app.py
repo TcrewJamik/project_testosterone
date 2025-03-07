@@ -22,7 +22,7 @@ if 'model_trained' not in st.session_state:
 # --- Functions ---
 @st.cache_data
 def load_data():
-    excel_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/main/ptestost.xlsx" # Replace with your actual raw GitHub URL
+    excel_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/refs/heads/master/ptestost.xlsx" # Replace with your actual raw GitHub URL
     try:
         df = pd.read_excel(excel_url)
         return df
