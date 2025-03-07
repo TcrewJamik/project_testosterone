@@ -6,18 +6,19 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                            f1_score, roc_auc_score, roc_curve, confusion_matrix)
+                             f1_score, roc_auc_score, roc_curve, confusion_matrix)
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
+import warnings
+warnings.filterwarnings('ignore')
 
 # Заголовок приложения
 st.title("Анализ дефицита тестостерона")
 
-# Загрузка данных напрямую из файла в репозитории
-file_path = 'ptestost.xlsx' 
-# Укажите путь к вашему файлу, если он не в корневой директории
+# Загрузка данных
+file_path = 'ptestost.xlsx'
 try:
     df = pd.read_excel(file_path)
     df = df.rename(columns={
@@ -29,11 +30,10 @@ try:
         'AC': 'Окружность_талии',
         'T': 'Дефицит Тестостерона'
     })
-    st.write("Данные успешно загружены из файла ptestost.xlsx!") # Изменено сообщение
+    st.write("Данные успешно загружены из файла ptestost.xlsx!")
 except FileNotFoundError:
     st.error(f"Файл {file_path} не найден. Убедитесь, что файл ptestost.xlsx находится в корневой директории вашего репозитория.")
     st.stop()
-
 
 # Информация о данных
 st.subheader("Информация о данных")
@@ -83,7 +83,6 @@ target = df['Дефицит Тестостерона']
 X = df.drop(columns=['Дефицит Тестостерона'])
 y = target
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
-
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
@@ -128,20 +127,17 @@ def evaluate_model(model, X_train, X_test, y_train, y_test, model_name, feature_
     plt.title(f'Матрица ошибок - {model_name}')
     st.pyplot(fig)
 
-    # Feature Importance
+    # Важность признаков
     if model_name == "Логистическая регрессия":
         importance = np.abs(model.coef_[0])
     else:
         importance = model.feature_importances_
-
     feature_importance = pd.DataFrame({
         'Feature': feature_names,
         'Importance': importance
     }).sort_values(by='Importance', ascending=False)
-
     st.write(f"\n{model_name} - Важность признаков:")
     st.write(feature_importance)
-
     fig = plt.figure(figsize=(10, 6))
     sns.barplot(x='Importance', y='Feature', data=feature_importance, palette='viridis')
     plt.title(f'Важность признаков - {model_name}')
@@ -154,12 +150,8 @@ st.subheader("Обучение и оценка моделей")
 
 # Логистическая регрессия
 if st.button("Обучить Логистическую регрессию"):
-    lr_param_grid = {
-        'C': [0.01, 0.1, 1, 10],
-        'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']
-    }
-    lr_grid = GridSearchCV(LogisticRegression(random_state=42, max_iter=1000),
-                           lr_param_grid, cv=5, scoring='f1', n_jobs=-1)
+    lr_param_grid = {'C': [0.01, 0.1, 1, 10], 'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']}
+    lr_grid = GridSearchCV(LogisticRegression(random_state=42, max_iter=1000), lr_param_grid, cv=5, scoring='f1', n_jobs=-1)
     lr_grid.fit(X_train_scaled, y_train)
     best_lr = lr_grid.best_estimator_
     st.write("Логистическая регрессия - Лучшие параметры:", lr_grid.best_params_)
@@ -167,13 +159,8 @@ if st.button("Обучить Логистическую регрессию"):
 
 # CatBoost
 if st.button("Обучить CatBoost"):
-    cb_param_grid = {
-        'depth': [4, 6, 10],
-        'iterations': [100, 200],
-        'learning_rate': [0.01, 0.1]
-    }
-    cb_grid = GridSearchCV(CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced'),
-                           cb_param_grid, cv=5, scoring='f1', n_jobs=-1)
+    cb_param_grid = {'depth': [4, 6, 10], 'iterations': [100, 200], 'learning_rate': [0.01, 0.1]}
+    cb_grid = GridSearchCV(CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced'), cb_param_grid, cv=5, scoring='f1', n_jobs=-1)
     cb_grid.fit(X_train_scaled, y_train)
     best_cb = cb_grid.best_estimator_
     st.write("CatBoost - Лучшие параметры:", cb_grid.best_params_)
@@ -181,14 +168,8 @@ if st.button("Обучить CatBoost"):
 
 # XGBoost
 if st.button("Обучить XGBoost"):
-    xgb_param_grid = {
-        'max_depth': [3, 6, 10],
-        'n_estimators': [100, 200],
-        'learning_rate': [0.01, 0.1],
-        'scale_pos_weight': [1, 5]
-    }
-    xgb_grid = GridSearchCV(XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'),
-                            xgb_param_grid, cv=5, scoring='f1', n_jobs=-1)
+    xgb_param_grid = {'max_depth': [3, 6, 10], 'n_estimators': [100, 200], 'learning_rate': [0.01, 0.1], 'scale_pos_weight': [1, 5]}
+    xgb_grid = GridSearchCV(XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'), xgb_param_grid, cv=5, scoring='f1', n_jobs=-1)
     xgb_grid.fit(X_train_scaled, y_train)
     best_xgb = xgb_grid.best_estimator_
     st.write("XGBoost - Лучшие параметры:", xgb_grid.best_params_)
@@ -196,15 +177,8 @@ if st.button("Обучить XGBoost"):
 
 # Random Forest
 if st.button("Обучить Random Forest"):
-    rf_param_grid = {
-        'n_estimators': [100, 200],
-        'max_depth': [5, 10, 20, None],
-        'min_samples_split': [2, 5],
-        'min_samples_leaf': [1, 2],
-        'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']
-    }
-    rf_grid = GridSearchCV(RandomForestClassifier(random_state=42),
-                           rf_param_grid, cv=5, scoring='f1', n_jobs=-1)
+    rf_param_grid = {'n_estimators': [100, 200], 'max_depth': [5, 10, 20, None], 'min_samples_split': [2, 5], 'min_samples_leaf': [1, 2], 'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']}
+    rf_grid = GridSearchCV(RandomForestClassifier(random_state=42), rf_param_grid, cv=5, scoring='f1', n_jobs=-1)
     rf_grid.fit(X_train_scaled, y_train)
     best_rf = rf_grid.best_estimator_
     st.write("Random Forest - Лучшие параметры:", rf_grid.best_params_)
