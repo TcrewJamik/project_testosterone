@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                             f1_score, roc_auc_score, roc_curve, confusion_matrix)
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -15,11 +15,10 @@ from xgboost import XGBClassifier
 # Заголовок приложения
 st.title("Анализ дефицита тестостерона")
 
-# Загрузка данных
-st.sidebar.header("Загрузка данных")
-uploaded_file = st.sidebar.file_uploader("Загрузите файл Excel (ptestost.xlsx)", type=["xlsx"])
-if uploaded_file is not None:
-    df = pd.read_excel(uploaded_file)
+# Загрузка данных напрямую из файла в репозитории
+file_path = 'ptestost.xlsx'  # Укажите путь к вашему файлу, если он не в корневой директории
+try:
+    df = pd.read_excel(file_path)
     df = df.rename(columns={
         'Age': 'Возраст',
         'DM': 'Наличие Диабета',
@@ -29,10 +28,11 @@ if uploaded_file is not None:
         'AC': 'Окружность_талии',
         'T': 'Дефицит Тестостерона'
     })
-    st.write("Данные успешно загружены!")
-else:
-    st.warning("Пожалуйста, загрузите файл Excel.")
+    st.write("Данные успешно загружены из файла ptestost.xlsx!") # Изменено сообщение
+except FileNotFoundError:
+    st.error(f"Файл {file_path} не найден. Убедитесь, что файл ptestost.xlsx находится в корневой директории вашего репозитория.")
     st.stop()
+
 
 # Информация о данных
 st.subheader("Информация о данных")
@@ -157,7 +157,7 @@ if st.button("Обучить Логистическую регрессию"):
         'C': [0.01, 0.1, 1, 10],
         'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']
     }
-    lr_grid = GridSearchCV(LogisticRegression(random_state=42, max_iter=1000), 
+    lr_grid = GridSearchCV(LogisticRegression(random_state=42, max_iter=1000),
                            lr_param_grid, cv=5, scoring='f1', n_jobs=-1)
     lr_grid.fit(X_train_scaled, y_train)
     best_lr = lr_grid.best_estimator_
@@ -171,7 +171,7 @@ if st.button("Обучить CatBoost"):
         'iterations': [100, 200],
         'learning_rate': [0.01, 0.1]
     }
-    cb_grid = GridSearchCV(CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced'), 
+    cb_grid = GridSearchCV(CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced'),
                            cb_param_grid, cv=5, scoring='f1', n_jobs=-1)
     cb_grid.fit(X_train_scaled, y_train)
     best_cb = cb_grid.best_estimator_
@@ -186,7 +186,7 @@ if st.button("Обучить XGBoost"):
         'learning_rate': [0.01, 0.1],
         'scale_pos_weight': [1, 5]
     }
-    xgb_grid = GridSearchCV(XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'), 
+    xgb_grid = GridSearchCV(XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'),
                             xgb_param_grid, cv=5, scoring='f1', n_jobs=-1)
     xgb_grid.fit(X_train_scaled, y_train)
     best_xgb = xgb_grid.best_estimator_
@@ -202,7 +202,7 @@ if st.button("Обучить Random Forest"):
         'min_samples_leaf': [1, 2],
         'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']
     }
-    rf_grid = GridSearchCV(RandomForestClassifier(random_state=42), 
+    rf_grid = GridSearchCV(RandomForestClassifier(random_state=42),
                            rf_param_grid, cv=5, scoring='f1', n_jobs=-1)
     rf_grid.fit(X_train_scaled, y_train)
     best_rf = rf_grid.best_estimator_
