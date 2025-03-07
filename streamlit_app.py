@@ -17,20 +17,19 @@ st.title('Предсказание дефицита тестостерона')
 
 # --- Functions ---
 @st.cache_data
-def load_data(uploaded_file):
-    if uploaded_file is not None:
-        df = pd.read_excel(uploaded_file)
-        df = df.rename(columns={
-            'Age': 'Возраст',
-            'DM': 'Наличие Диабета',
-            'TG': 'Триглицериды (мг/дл)',
-            'HT': 'Наличие Гипертонии',
-            'HDL': 'HDL_холестерин',
-            'AC': 'Окружность_талии',
-            'T': 'Дефицит Тестостерона'
-        })
-        return df
-    return None
+def load_data():
+    excel_url = "https://raw.githubusercontent.com/your_username/your_repo_name/main/ptestost.xlsx" # Replace with your actual raw GitHub URL
+    df = pd.read_excel(excel_url)
+    df = df.rename(columns={
+        'Age': 'Возраст',
+        'DM': 'Наличие Диабета',
+        'TG': 'Триглицериды (мг/дл)',
+        'HT': 'Наличие Гипертонии',
+        'HDL': 'HDL_холестерин',
+        'AC': 'Окружность_талии',
+        'T': 'Дефицит Тестостерона'
+    })
+    return df
 
 def preprocess_data(df):
     target = df['Дефицит Тестостерона']
@@ -97,27 +96,26 @@ def evaluate_model(model, X_test, y_test, model_name, feature_names):
     st.pyplot(fig_fi)
 
 
-# --- Sidebar for Inputs ---
-st.sidebar.header("Настройки")
-uploaded_file = st.sidebar.file_uploader("Загрузите Excel файл", type=["xlsx"])
+# --- Sidebar for Model Choice ---
+st.sidebar.header("Настройки модели")
 model_choice = st.sidebar.selectbox("Выберите модель", ["Логистическая регрессия", "CatBoost", "XGBoost", "Random Forest"])
-
-show_data = st.sidebar.checkbox("Показать данные", value=False)
-show_info = st.sidebar.checkbox("Информация о данных", value=False)
-show_describe = st.sidebar.checkbox("Описательная статистика", value=False)
-show_na = st.sidebar.checkbox("Проверка на пропуски", value=False)
-
-show_histograms = st.sidebar.checkbox("Гистограммы признаков", value=False)
-show_boxplot = st.sidebar.checkbox("Box plot", value=False)
-show_barplots = st.sidebar.checkbox("Столбчатые диаграммы", value=False)
-show_correlation = st.sidebar.checkbox("Матрица корреляций", value=False)
 
 
 # --- Main App ---
-df = load_data(uploaded_file)
+df = load_data()
 
 if df is not None:
     st.header('Обзор данных')
+
+    with st.expander("Настройки отображения данных"):
+        show_data = st.checkbox("Показать данные", value=False)
+        show_info = st.checkbox("Информация о данных", value=False)
+        show_describe = st.checkbox("Описательная статистика", value=False)
+        show_na = st.checkbox("Проверка на пропуски", value=False)
+        show_histograms = st.checkbox("Гистограммы признаков", value=False)
+        show_boxplot = st.checkbox("Box plot", value=False)
+        show_barplots = st.checkbox("Столбчатые диаграммы", value=False)
+        show_correlation = st.checkbox("Матрица корреляций", value=False)
 
     if show_data:
         st.subheader("Данные")
@@ -198,4 +196,5 @@ if df is not None:
 
 
 else:
-    st.info("Пожалуйста, загрузите Excel файл для начала работы.")
+    st.error("Не удалось загрузить данные. Проверьте URL и подключение к интернету.")
+    st.stop()
