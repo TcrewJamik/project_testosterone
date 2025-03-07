@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
                              f1_score, roc_auc_score, roc_curve, confusion_matrix)
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
+import io
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -37,7 +38,9 @@ except FileNotFoundError:
 
 # Информация о данных
 st.subheader("Информация о данных")
-st.write(df.info(), verbose=False)
+buffer = io.StringIO()
+df.info(buf=buffer)
+st.text(buffer.getvalue())  # Используем st.text для вывода текстовой информации
 st.write("Описательная статистика:")
 st.write(df.describe())
 st.write("Пропущенные значения:")
@@ -139,7 +142,7 @@ def evaluate_model(model, X_train, X_test, y_train, y_test, model_name, feature_
     st.write(f"\n{model_name} - Важность признаков:")
     st.write(feature_importance)
     fig = plt.figure(figsize=(10, 6))
-    sns.barplot(x='Importance', y='Feature', data=feature_importance, palette='viridis')
+    sns.barplot(x='Importance', y='Feature', hue='Feature', data=feature_importance, palette='viridis', legend=False)
     plt.title(f'Важность признаков - {model_name}')
     plt.xlabel('Важность')
     plt.ylabel('Признак')
