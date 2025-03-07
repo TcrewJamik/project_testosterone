@@ -15,10 +15,14 @@ warnings.filterwarnings('ignore')
 
 st.title('Предсказание дефицита тестостерона')
 
+# Initialize session state for model training status
+if 'model_trained' not in st.session_state:
+    st.session_state.model_trained = False
+
 # --- Functions ---
 @st.cache_data
 def load_data():
-    excel_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/refs/heads/master/ptestost.xlsx" # Replace with your actual raw GitHub URL
+    excel_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/main/ptestost.xlsx" # Replace with your actual raw GitHub URL
     try:
         df = pd.read_excel(excel_url)
         return df
@@ -212,6 +216,7 @@ if df is not None: # Check if df is loaded successfully
     }
 
     if st.button('Обучить и оценить модель'):
+        st.session_state.model_trained = True # Set model_trained to True after training
         st.subheader(f"Оценка модели: {model_choice}")
         with st.spinner(f'Обучение модели {model_choice}...'):
             model = models[model_choice] # Get selected model
@@ -232,7 +237,9 @@ if df is not None: # Check if df is loaded successfully
     input_scaled = scaler.transform(input_data) # Scale input data
 
     if st.button('Предсказать'):
-        if model_choice in models:
+        if not st.session_state.model_trained: # Check if model is trained
+            st.warning("Пожалуйста, обучите модель, нажав кнопку 'Обучить и оценить модель' перед выполнением предсказания.")
+        elif model_choice in models:
             selected_model = models[model_choice]
             with st.spinner('Выполнение предсказания...'):
                 prediction_proba = predict_deficiency(selected_model, input_scaled) # Pass scaled input
@@ -243,7 +250,7 @@ if df is not None: # Check if df is loaded successfully
             else:
                 st.success("На основе введенных данных, модель предсказывает **низкую вероятность** дефицита тестостерона.")
         else:
-            st.error("Пожалуйста, обучите модель перед выполнением предсказания.")
+            st.error("Модель не выбрана.")
 
 
 else:
