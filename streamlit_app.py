@@ -21,19 +21,10 @@ def load_data():
     excel_url = "https://raw.githubusercontent.com/TcrewJamik/project_testosterone/main/ptestost.xlsx" # Replace with your actual raw GitHub URL
     try:
         df = pd.read_excel(excel_url)
+        return df
     except Exception as e:
         st.error(f"Ошибка при загрузке данных из URL: {e}")
         return None
-    df = df.rename(columns={
-        'Age': 'Возраст',
-        'DM': 'Наличие Диабета',
-        'TG': 'Триглицериды (мг/дл)',
-        'HT': 'Наличие Гипертонии',
-        'HDL': 'HDL_холестерин',
-        'AC': 'Окружность_талии',
-        'T': 'Дефицит Тестостерона'
-    })
-    return df
 
 def preprocess_data(df):
     target = df['Дефицит Тестостерона']
@@ -112,20 +103,31 @@ st.sidebar.header("Настройки модели")
 model_choice = st.sidebar.selectbox("Выберите модель", ["Логистическая регрессия", "CatBoost", "XGBoost", "Random Forest"])
 
 st.sidebar.header("Входные параметры")
-df_desc = load_data().describe() # Load data just to get describe, optimize later if needed
-
-input_age = st.sidebar.slider("Возраст", 45, 85, 60) # Using ranges from df.describe()
-input_diabetes = st.sidebar.selectbox("Наличие Диабета", [0, 1])
-input_triglycerides = st.sidebar.slider("Триглицериды (мг/дл)", 12, 980, 155)
-input_hypertension = st.sidebar.selectbox("Наличие Гипертонии", [0, 1])
-input_hdl = st.sidebar.slider("HDL_холестерин", 13.0, 116.0, 46.3)
-input_waist_circumference = st.sidebar.slider("Окружность_талии", 43.0, 198.0, 98.9)
 
 
 # --- Main App ---
 df = load_data()
 
-if df is not None:
+if df is not None: # Check if df is loaded successfully
+    df = df.rename(columns={ # Renaming here, after checking if df is valid
+        'Age': 'Возраст',
+        'DM': 'Наличие Диабета',
+        'TG': 'Триглицериды (мг/дл)',
+        'HT': 'Наличие Гипертонии',
+        'HDL': 'HDL_холестерин',
+        'AC': 'Окружность_талии',
+        'T': 'Дефицит Тестостерона'
+    })
+
+    df_desc = df.describe() # Describe after successful load
+    input_age = st.sidebar.slider("Возраст", 45, 85, 60) # Using ranges from df.describe()
+    input_diabetes = st.sidebar.selectbox("Наличие Диабета", [0, 1])
+    input_triglycerides = st.sidebar.slider("Триглицериды (мг/дл)", 12, 980, 155)
+    input_hypertension = st.sidebar.selectbox("Наличие Гипертонии", [0, 1])
+    input_hdl = st.sidebar.slider("HDL_холестерин", 13.0, 116.0, 46.3)
+    input_waist_circumference = st.sidebar.slider("Окружность_талии", 43.0, 198.0, 98.9)
+
+
     st.header('Обзор данных')
 
     with st.expander("Настройки отображения данных"):
@@ -245,5 +247,5 @@ if df is not None:
 
 
 else:
-    st.error("Не удалось загрузить данные. Проверьте URL и подключение к интернету.")
+    st.error("Не удалось загрузить данные. Проверьте URL и подключение к интернету.  **Убедитесь, что URL-адрес raw-файла XLSX правильный и доступен.**")
     st.stop()
