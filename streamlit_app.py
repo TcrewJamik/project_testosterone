@@ -11,8 +11,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from catboost import CatBoostClassifier
 from xgboost import XGBClassifier
-import warnings
-warnings.filterwarnings('ignore')
 
 # Заголовок приложения
 st.title("Анализ дефицита тестостерона")
