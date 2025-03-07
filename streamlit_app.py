@@ -100,8 +100,8 @@ if show_eda:
 def train_model(model_name, X_train_scaled, y_train):
     if model_name == "Логистическая регрессия":
         lr_param_grid = {
-            'C': [0.01, 0.1, 1, 10],
-            'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']
+            'C': [0.1, 1], # Simplified C values
+            'class_weight': ['balanced'] # Kept only 'balanced'
         }
         lr_grid = GridSearchCV(LogisticRegression(random_state=42, max_iter=1000),
                                lr_param_grid, cv=5, scoring='f1', n_jobs=-1)
@@ -109,9 +109,9 @@ def train_model(model_name, X_train_scaled, y_train):
         best_model = lr_grid.best_estimator_
     elif model_name == "CatBoost":
         cb_param_grid = {
-            'depth': [4, 6, 10],
-            'iterations': [100, 200],
-            'learning_rate': [0.01, 0.1]
+            'depth': [4, 6], # Simplified depth values
+            'iterations': [100], # Reduced iterations
+            'learning_rate': [0.1] # Single learning rate
         }
         cb_grid = GridSearchCV(CatBoostClassifier(random_state=42, verbose=0, auto_class_weights='Balanced'),
                                cb_param_grid, cv=5, scoring='f1', n_jobs=-1)
@@ -119,10 +119,10 @@ def train_model(model_name, X_train_scaled, y_train):
         best_model = cb_grid.best_estimator_
     elif model_name == "XGBoost":
         xgb_param_grid = {
-            'max_depth': [3, 6, 10],
-            'n_estimators': [100, 200],
-            'learning_rate': [0.01, 0.1],
-            'scale_pos_weight': [1, 5]
+            'max_depth': [3, 6], # Simplified depth values
+            'n_estimators': [100], # Reduced estimators
+            'learning_rate': [0.1], # Single learning rate
+            'scale_pos_weight': [1] # Single scale_pos_weight
         }
         xgb_grid = GridSearchCV(XGBClassifier(random_state=42, use_label_encoder=False, eval_metric='logloss'),
                                 xgb_param_grid, cv=5, scoring='f1', n_jobs=-1)
@@ -130,11 +130,11 @@ def train_model(model_name, X_train_scaled, y_train):
         best_model = xgb_grid.best_estimator_
     elif model_name == "Random Forest":
         rf_param_grid = {
-            'n_estimators': [100, 200],
-            'max_depth': [5, 10, 20, None],
-            'min_samples_split': [2, 5],
-            'min_samples_leaf': [1, 2],
-            'class_weight': [{0: 1, 1: 1}, {0: 1, 1: 5}, 'balanced']
+            'n_estimators': [100], # Reduced estimators
+            'max_depth': [5, 10], # Simplified depth values
+            'min_samples_split': [2], # Single value
+            'min_samples_leaf': [1], # Single value
+            'class_weight': ['balanced'] # Kept only 'balanced'
         }
         rf_grid = GridSearchCV(RandomForestClassifier(random_state=42),
                                rf_param_grid, cv=5, scoring='f1', n_jobs=-1)
